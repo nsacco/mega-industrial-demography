@@ -60,18 +60,24 @@ execute:
 #| label: setup
 #| include: false
 library(tidyverse)
-library(targets)
-library(here)
 library(gt)
 library(knitr)
-library(patchwork)
 
-# Load pre-computed targets
-did_effects       <- targets::tar_read(did_effects)
-did_twfe          <- targets::tar_read(did_twfe)
-spillover_decomp  <- targets::tar_read(spillover_decomposition)
-spatial_morans    <- targets::tar_read(spatial_morans)
-summary_tab       <- targets::tar_read(summary_table)
+# --- STUB DATA (replace with targets::tar_read() once pipeline is run) ---
+summary_tab <- tibble(
+    Variable = c("Log Population", "Annual Growth Rate (%)", "Urbanization Rate"),
+    control_mean = c(10.2, 1.3, 0.61),
+    control_sd = c(1.1, 0.8, 0.18),
+    treated_mean = c(10.8, 2.1, 0.74),
+    treated_sd = c(1.2, 1.0, 0.15)
+)
+
+# Stub DiD results
+did_effects <- list(
+    overall = list(overall.att = NA_real_, overall.se = NA_real_),
+    dynamic = list(att.egt = rep(NA_real_, 5), egt = -2:2)
+)
+did_twfe <- list(coefficients = c(treated = NA_real_))
 ```
 
 # Introduction {#sec-intro}
@@ -173,17 +179,14 @@ and primary targeted sector.
 
 ```{r}
 #| label: tbl-summary
-#| tbl-cap: "Summary Statistics by Treatment Status"
+#| tbl-cap: "Summary Statistics by Treatment Status (Placeholder)"
 
 summary_tab |>
-  gt() |>
-  fmt_number(columns = where(is.numeric), decimals = 3) |>
-  tab_spanner(label = "Control", columns = starts_with("control")) |>
-  tab_spanner(label = "Treated", columns = starts_with("treated")) |>
-  tab_style(
-    style = cell_fill(color = "#f5f5f5"),
-    locations = cells_row_groups()
-  )
+    gt() |>
+    fmt_number(columns = where(is.numeric), decimals = 3) |>
+    tab_spanner(label = "Control", columns = starts_with("control")) |>
+    tab_spanner(label = "Treated", columns = starts_with("treated")) |>
+    tab_header(title = "[PLACEHOLDER — run tar_make() to populate with real data]")
 ```
 
 # Identification Strategy {#sec-identification}
@@ -228,29 +231,45 @@ absence of significant pre-trends is consistent with the parallel trends assumpt
 
 ```{r}
 #| label: fig-event-study
-#| fig-cap: "Event Study: Effect of Industrial Policy on Log Population"
-#| fig-height: 5
+#| fig-cap: "Event Study: Effect of Industrial Policy on Log Population (Placeholder)"
+#| fig-height: 4
 
-targets::tar_read(fig_event_study)
+tibble(
+    event_time = -4:6,
+    att        = c(0, 0, 0, 0, 0, 0.05, 0.09, 0.12, 0.11, 0.13, 0.14),
+    ci_lo      = att - 0.04,
+    ci_hi      = att + 0.04
+) |>
+    ggplot(aes(event_time, att)) +
+    geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), fill = "steelblue", alpha = 0.2) +
+    geom_line(color = "steelblue") +
+    geom_point(color = "steelblue") +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    geom_vline(xintercept = -0.5, linetype = "dotted", color = "red") +
+    labs(
+        x = "Years relative to treatment", y = "ATT (log population)",
+        caption = "PLACEHOLDER — replace with real estimates from tar_make()"
+    ) +
+    theme_minimal(base_size = 11)
 ```
 
 ```{r}
 #| label: tbl-did-main
-#| tbl-cap: "Main DiD Estimates: Effect on Log Population"
+#| tbl-cap: "Main DiD Estimates: Effect on Log Population (Placeholder)"
 
 tibble(
-  Specification      = c("Callaway-Sant'Anna (Overall ATT)", 
-                         "TWFE (benchmark)", 
-                         "Callaway-Sant'Anna (Dynamic, post-treatment avg)"),
-  Estimate           = c(did_effects$overall$overall.att,
-                         coef(did_twfe)["treated"],
-                         mean(did_effects$dynamic$att.egt[did_effects$dynamic$egt >= 0], na.rm = TRUE)),
-  SE                 = c(did_effects$overall$overall.se, NA, NA),
-  p_value            = c(did_effects$overall$overall.att / did_effects$overall$overall.se |> 
-                           pnorm(lower.tail = FALSE) * 2, NA, NA)
+    Specification = c(
+        "Callaway-Sant'Anna (Overall ATT)",
+        "TWFE (benchmark)",
+        "Callaway-Sant'Anna (Dynamic, post-treatment avg)"
+    ),
+    Estimate = c(NA_real_, NA_real_, NA_real_),
+    SE = c(NA_real_, NA_real_, NA_real_),
+    p_value = c(NA_real_, NA_real_, NA_real_)
 ) |>
-  gt() |>
-  fmt_number(decimals = 4)
+    gt() |>
+    fmt_missing(everything(), missing_text = "[TBD]") |>
+    tab_header(title = "[PLACEHOLDER — run tar_make() to populate]")
 ```
 
 ## Spatial Spillovers {#sec-spatial}
