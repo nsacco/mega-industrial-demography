@@ -1,37 +1,43 @@
 ---
-title: "Industrial Promotion Policies and Population Growth: Causal Evidence from Argentina"
-subtitle: "A Staggered Difference-in-Differences Approach"
+title: "Políticas de promoción industrial y crecimiento poblacional: evidencia causal para la Argentina"
+subtitle: "Un enfoque de diferencias en diferencias escalonado"
 author:
-  - name: "Author Name"
-    affiliation: "Institution"
-    email: "author@institution.edu"
+  - name: "Nicolás Sacco"
+    affiliation: "Institución"
+    email: "autor@institución.edu"
     corresponding: true
 date: last-modified
+lang: es
 abstract: |
-  This paper examines the causal effect of industrial promotion zones on subnational
-  population growth in Argentina over the period 1970–2022. Exploiting the staggered
-  adoption of industrial promotion legislation across Argentine departments, we apply
-  the Callaway-Sant'Anna (2021) estimator to isolate the average treatment effect on
-  the treated (ATT) while accounting for heterogeneous treatment timing. We complement
-  this with generalized synthetic control methods (Xu 2017) and spatial econometric
-  models to detect geographic spillovers. Our results suggest that industrial promotion
-  policies generate [X] percentage-point increases in annual population growth rates
-  within treated areas, with effects concentrated in [time period] and mediated
-  primarily through [mechanism]. Spatial decomposition reveals significant positive
-  spillovers to neighboring areas up to [X] km from zone boundaries.
+  Este trabajo examina el efecto causal de las zonas de promoción industrial sobre el 
+  crecimiento poblacional subnacional en Argentina durante el período 1970–2022. 
+  Aprovechando la adopción escalonada de legislación de promoción industrial entre 
+  departamentos argentinos, se aplica el estimador de Callaway y Sant'Anna (2021) para 
+  aislar el efecto promedio del tratamiento sobre los tratados (ATT), controlando por 
+  la heterogeneidad en el calendario de adopción. Los resultados se complementan con 
+  métodos de control sintético generalizado (Xu, 2017) y modelos econométricos 
+  espaciales para detectar derrames geográficos. Los resultados sugieren que las 
+  políticas de promoción industrial generan aumentos de [X] puntos porcentuales en las 
+  tasas de crecimiento poblacional anual en las áreas tratadas, con efectos concentrados 
+  en [período] y mediados principalmente a través de [mecanismo]. La descomposición 
+  espacial revela derrames positivos significativos hacia áreas vecinas ubicadas hasta 
+  [X] km de los límites de las zonas.
 keywords:
-  - industrial policy
-  - population growth
-  - difference-in-differences
+  - política industrial
+  - crecimiento poblacional
+  - diferencias en diferencias
   - Argentina
-  - spatial econometrics
-  - place-based policy
+  - econometría espacial
+  - políticas de lugar
 format:
   pdf:
     documentclass: article
     classoption: [12pt, a4paper]
     number-sections: true
     colorlinks: true
+    linkcolor: "NavyBlue"
+    citecolor: "teal"
+    urlcolor: "NavyBlue"
     fig-cap-location: bottom
     tbl-cap-location: top
     include-in-header:
@@ -63,282 +69,297 @@ library(tidyverse)
 library(gt)
 library(knitr)
 
-# --- STUB DATA (replace with targets::tar_read() once pipeline is run) ---
+# --- DATOS DE MARCADOR DE POSICIÓN (reemplazar con targets::tar_read() una vez ejecutado tar_make()) ---
 summary_tab <- tibble(
-    Variable = c("Log Population", "Annual Growth Rate (%)", "Urbanization Rate"),
-    control_mean = c(10.2, 1.3, 0.61),
-    control_sd = c(1.1, 0.8, 0.18),
-    treated_mean = c(10.8, 2.1, 0.74),
-    treated_sd = c(1.2, 1.0, 0.15)
+  Variable = c("Logaritmo de la población", "Tasa de crecimiento anual (%)", "Tasa de urbanización"),
+  control_media = c(10.2, 1.3, 0.61),
+  control_de    = c(1.1, 0.8, 0.18),
+  tratado_media = c(10.8, 2.1, 0.74),
+  tratado_de    = c(1.2, 1.0, 0.15)
 )
 
-# Stub DiD results
+# Resultados DiD de marcador de posición
 did_effects <- list(
-    overall = list(overall.att = NA_real_, overall.se = NA_real_),
-    dynamic = list(att.egt = rep(NA_real_, 5), egt = -2:2)
+  overall = list(overall.att = NA_real_, overall.se = NA_real_),
+  dynamic = list(att.egt = rep(NA_real_, 5), egt = -2:2)
 )
 did_twfe <- list(coefficients = c(treated = NA_real_))
 ```
 
-# Introduction {#sec-intro}
+# Introducción {#sec-intro}
 
-Place-based development policies occupy a contested position in the academic and policy
-literature [@kline_2013; @neumark_2015]. On one hand, theory predicts that spatially
-targeted industrial incentives can overcome coordination failures and catalyze agglomeration
-economies in lagging regions [@krugman_1991; @moretti_2010]. On the other hand, critics
-argue that such policies may merely relocate economic activity across space rather than
-generate genuine growth, with uncertain and potentially negative consequences for
-population distribution [@glaeser_ward_2009].
+Las políticas de desarrollo basadas en el territorio ocupan una posición controvertida 
+en la literatura académica y en el debate de política pública [@kline_2013; @neumark_2015]. 
+Por un lado, la teoría predice que los incentivos industriales con foco espacial pueden 
+superar fallas de coordinación y catalizar economías de aglomeración en regiones rezagadas 
+[@krugman_1991; @moretti_2010]. Por otro, la crítica señala que tales políticas pueden 
+simplemente reubicar la actividad económica en el espacio en lugar de generar crecimiento 
+genuino, con consecuencias inciertas —y potencialmente negativas— sobre la distribución 
+poblacional [@glaeser_ward_2009].
 
-This paper contributes to resolving this debate by examining the demographic footprint of
-industrial promotion zones in Argentina — a country that has maintained one of the
-developing world's most extensive systems of geographically targeted industrial incentives
-since the 1970s [@schvarzer_1987; @azpiazu_1988]. Unlike most existing evaluations,
-which focus on firm-level outcomes or employment, we directly analyze **population dynamics**
-as the ultimate measure of whether place-based policies succeed in reshaping the
-geographic distribution of economic activity and human capital.
+Este trabajo contribuye a resolver este debate examinando la huella demográfica de las 
+zonas de promoción industrial en Argentina, un país que ha mantenido uno de los sistemas 
+más extensos de incentivos industriales con foco geográfico del mundo en desarrollo desde 
+la década de 1970 [@schvarzer_1987; @azpiazu_1988]. A diferencia de la mayoría de las 
+evaluaciones existentes, centradas en resultados a nivel de firma o en el empleo, 
+analizamos directamente las **dinámicas poblacionales** como medida última del éxito de 
+las políticas de lugar en la redistribución geográfica de la actividad económica y el 
+capital humano.
 
-## Research Question
+## Pregunta de investigación
 
-**Do industrial promotion zones alter subnational population growth trajectories in Argentina,
-and if so, through what mechanisms?**
+**¿Alteran las zonas de promoción industrial las trayectorias de crecimiento poblacional 
+subnacional en Argentina y, de ser así, a través de qué mecanismos?**
 
-We decompose this question into three specific hypotheses:
+Descomponemos esta pregunta en tres hipótesis específicas:
 
-1. **H1 (Growth effect):** Departments with active industrial promotion zones experience
-   higher population growth rates than comparable non-treated departments.
+1. **H1 (Efecto sobre el crecimiento):** Los departamentos con zonas de promoción 
+   industrial activas experimentan tasas de crecimiento poblacional más altas que 
+   departamentos comparables no tratados.
 
-2. **H2 (Persistence):** Treatment effects persist beyond the initial policy period,
-   reflecting agglomeration spillovers.
+2. **H2 (Persistencia):** Los efectos del tratamiento persisten más allá del período 
+   de política inicial, reflejando derrames de aglomeración.
 
-3. **H3 (Spatial spillovers):** Population growth effects extend to neighboring departments,
-   consistent with commuter and migration hinterland expansion.
+3. **H3 (Derrames espaciales):** Los efectos sobre el crecimiento poblacional se 
+   extienden a departamentos vecinos, consistente con la expansión del hinterland de 
+   conmutación y migración.
 
-## Contribution
+## Contribuciones
 
-This paper makes three contributions to the literature. **First**, we provide the first
-causally credible estimates of the demographic consequences of Argentina's industrial
-promotion system using modern staggered difference-in-differences methods
-[@callaway_santanna_2021]. **Second**, we contribute to the broader place-based policy
-evaluation literature by demonstrating how population dynamics can serve as a unified
-outcome integrating multiple dimensions of regional development. **Third**, we generate
-a methodological template for evaluating industrial policy in data-constrained
-middle-income country contexts.
+Este trabajo realiza tres contribuciones a la literatura. **En primer lugar**, ofrece 
+las primeras estimaciones causalmente creíbles de las consecuencias demográficas del 
+sistema de promoción industrial argentino, utilizando métodos modernos de diferencias en 
+diferencias escalonado [@callaway_santanna_2021]. **En segundo lugar**, contribuye a la 
+literatura de evaluación de políticas de lugar al demostrar cómo las dinámicas 
+poblacionales pueden servir como un resultado unificado que integra múltiples dimensiones 
+del desarrollo regional. **En tercer lugar**, genera un modelo metodológico para evaluar 
+políticas industriales en contextos de países de ingresos medios con restricciones de datos.
 
-# Theoretical Framework {#sec-theory}
+# Marco teórico {#sec-teoria}
 
-## Place-Based Industrial Policy and Population Dynamics
+## Política industrial de lugar y dinámica poblacional
 
-The theoretical link between industrial promotion and population growth operates through
-two primary channels. The **direct employment channel** predicts that subsidized firm
-formation increases local labor demand, attracting in-migration and retaining existing
-residents [@moretti_2010; @suedekum_2006]. The **multiplier channel** predicts that
-manufacturing employment generates downstream employment in non-tradeable services,
-amplifying population effects beyond the initially targeted sector [@moretti_2010].
+El vínculo teórico entre la promoción industrial y el crecimiento poblacional opera a 
+través de dos canales principales. El **canal directo de empleo** predice que la formación 
+subsidiada de empresas aumenta la demanda local de trabajo, atrayendo migración y 
+reteniendo a los residentes existentes [@moretti_2010; @suedekum_2006]. El **canal 
+multiplicador** predice que el empleo manufacturero genera empleo aguas abajo en servicios 
+no transables, amplificando los efectos poblacionales más allá del sector inicialmente 
+objetivo [@moretti_2010].
 
-We situate this analysis within the regional growth and agglomeration literature
-[@glaeser_1992; @combes_2008] and the demographic transition framework
-[@bongaarts_bulatao_1999], which predicts that economic restructuring reshapes
-not only population size but also age structure, household composition, and fertility.
+Situamos este análisis en la literatura de crecimiento regional y aglomeración 
+[@glaeser_1992; @combes_2008] y en el marco de la transición demográfica 
+[@bongaarts_bulatao_1999], que predice que la reestructuración económica moldea no solo el 
+tamaño de la población sino también su estructura etaria, composición de los hogares 
+y fecundidad.
 
-## Industrial Policy in Argentina: Historical Context
+## La política industrial en Argentina: context histórico
 
-Argentina's industrial promotion system emerged in the 1970s as an explicit tool for
-reducing regional inequality and stimulating industrial development in lagging provinces.
-The key legislative milestones include:
+El sistema de promoción industrial argentino surgió en la década de 1970 como instrumento 
+explícito para reducir la desigualdad regional y estimular el desarrollo industrial en 
+provincias rezagadas. Los principales hitos legislativos incluyen:
 
-- **Ley 22.021 (1979):** Promoted industrial development in San Luis, La Rioja,
-  Catamarca, and San Juan through tax exemptions and credit subsidies.
-- **Ley 19.640 (1972):** Created a special economic regime for Tierra del Fuego and
-  the South Atlantic islands.
-- **Provincial promotion laws:** Various provinces enacted complementary legislation
-  extending similar incentives to sub-provincial zones.
+- **Ley 22.021 (1979):** Promovió el desarrollo industrial en San Luis, La Rioja, 
+  Catamarca y San Juan mediante exenciones impositivas y subsidios crediticios.
+- **Ley 19.640 (1972):** Creó un régimen económico especial para Tierra del Fuego 
+  y las Islas del Atlántico Sur.
+- **Leyes provinciales de promoción:** Diversas provincias sancionaron legislación 
+  complementaria que extendió incentivos similares a zonas subprovinciales.
 
-# Data {#sec-data}
+# Datos {#sec-datos}
 
-## Census Data (Module A)
+## Datos censales (Módulo A)
 
-We use microdata from five Argentine population censuses: 1970, 1991, 2001, 2010, and
-2022, harmonized to consistent geographic units (departments/partidos) using the
-crosswalk described in the replication appendix. The harmonization procedure follows
-@ipums_international and is detailed in [@sec-appendix-harmonization].
+Utilizamos microdatos de cinco censos de población argentinos: 1970, 1991, 2001, 2010 
+y 2022, armonizados a unidades geográficas consistentes (departamentos/partidos) mediante 
+el cuadro de equivalencias descripto en el apéndice de replicación. El procedimiento de 
+armonización sigue a @ipums_international y se detalla en [@sec-apendice-armonizacion].
 
-Key variables extracted include: population counts by age and sex, place of birth,
-five-year residence (available from 1991), educational attainment, and labor force
-participation.
+Las variables clave extraídas incluyen: conteos de población por edad y sexo, lugar de 
+nacimiento, residencia de cinco años (disponible desde 1991), nivel educativo y 
+participación en la fuerza de trabajo.
 
-## Industrial Promotion Zone Data (Module B)
+## Datos de zonas de promoción industrial (Módulo B)
 
-Our primary treatment variable is derived from a georeferenced dataset of industrial
-promotion zones, constructed from the legislative record. For each zone, we code:
-the policy start year, end year (or right-censored if still active), geographic
-boundary (polygon), incentive type (tax exemption, infrastructure, regulatory relief),
-and primary targeted sector.
+Nuestra variable de tratamiento principal se deriva de un conjunto de datos georreferenciado 
+de zonas de promoción industrial, construido a partir del registro legislativo. Por cada 
+zona, se codifica: el año de inicio de la política, el año de finalización (o censurado a 
+la derecha si aún está activa), el límite geográfico (polígono), el tipo de incentivo 
+(exención fiscal, infraestructura, alivio regulatorio) y el sector objetivo principal.
 
-## Summary Statistics
+## Estadísticas descriptivas
 
 ```{r}
-#| label: tbl-summary
-#| tbl-cap: "Summary Statistics by Treatment Status (Placeholder)"
+#| label: tbl-resumen
+#| tbl-cap: "Estadísticas descriptivas según estatus de tratamiento (marcador de posición)"
 
 summary_tab |>
-    gt() |>
-    fmt_number(columns = where(is.numeric), decimals = 3) |>
-    tab_spanner(label = "Control", columns = starts_with("control")) |>
-    tab_spanner(label = "Treated", columns = starts_with("treated")) |>
-    tab_header(title = "[PLACEHOLDER — run tar_make() to populate with real data]")
+  gt() |>
+  fmt_number(columns = where(is.numeric), decimals = 3) |>
+  tab_spanner(label = "Control", columns = starts_with("control")) |>
+  tab_spanner(label = "Tratado", columns = starts_with("tratado")) |>
+  tab_header(title = "[MARCADOR DE POSICIÓN — ejecutar tar_make() para poblar con datos reales]")
 ```
 
-# Identification Strategy {#sec-identification}
+# Estrategia de identificación {#sec-identificacion}
 
-## Research Design
+## Diseño de investigación
 
-Our primary identification strategy exploits the **staggered rollout** of industrial
-promotion legislation: departments received treatment at different dates, allowing us
-to use not-yet-treated and never-treated departments as counterfactuals for early-treated
-departments.
+Nuestra estrategia de identificación principal explota el **despliegue escalonado** de 
+la legislación de promoción industrial: los departamentos recibieron el tratamiento en 
+distintas fechas, lo que nos permite utilizar departamentos aún no tratados y nunca 
+tratados como contrafactuales para los departamentos tratados tempranamente.
 
-> [!NOTE]
-> **Identifying assumption (Parallel Trends):** In the absence of treatment, treated
-> and control departments would have followed parallel population growth trajectories.
-> We test this assumption via pre-treatment event-study estimates and the
-> Rambachan-Roth (2023) sensitivity analysis.
+> **Supuesto de identificación (Tendencias paralelas):** En ausencia de tratamiento, 
+> los departamentos tratados y de control habrían seguido trayectorias paralelas de 
+> crecimiento poblacional. Ponemos a prueba este supuesto mediante estimaciones de 
+> estudio de eventos previas al tratamiento y el análisis de sensibilidad de 
+> Rambachan-Roth (2023).
 
-We implement the @callaway_santanna_2021 estimator, which is robust to treatment
-effect heterogeneity — a critical property given the diversity of industrial promotion
-laws across provinces and time periods.
+Implementamos el estimador de @callaway_santanna_2021, que es robusto a la heterogeneidad 
+en los efectos del tratamiento —una propiedad crítica dada la diversidad de leyes de 
+promoción industrial entre provincias y períodos.
 
-## Threats to Identification
+## Amenazas a la identificación
 
-**Selection into treatment:** Provinces that lobbied for industrial promotion may
-differ systematically from non-treated provinces. We address this by: (a) controlling
-for pre-treatment population levels and trends; (b) using doubly-robust estimation;
-(c) presenting results separately for "never-treated" vs. "not-yet-treated" control
-groups.
+**Selección en el tratamiento:** Las provincias que gestionaron la promoción industrial 
+pueden diferir sistemáticamente de las no tratadas. Esto se aborda: (a) controlando 
+por niveles y tendencias de población previos al tratamiento; (b) utilizando estimación 
+doblemente robusta; (c) presentando resultados por separado para los grupos de control 
+«nunca tratados» vs. «aún no tratados».
 
-**Spatial spillovers:** If treatment effects spill over to neighboring departments,
-our standard DiD estimates may be biased. We explicitly test for spillovers using
-spatial econometric methods (@sec-spatial).
+**Derrames espaciales:** Si los efectos del tratamiento se derraman hacia departamentos 
+vecinos, nuestras estimaciones DiD estándar pueden estar sesgadas. Se examinan 
+explícitamente los derrames mediante métodos econométricos espaciales (@sec-espacial).
 
-# Results {#sec-results}
+# Resultados {#sec-resultados}
 
-## Main Effect on Population Growth
+## Efecto principal sobre el crecimiento poblacional
 
-@fig-event-study presents the event-study estimates. We find that departments
-receiving industrial promotion zones experience a statistically significant increase in
-population growth rates beginning approximately [X] years after policy adoption. The
-absence of significant pre-trends is consistent with the parallel trends assumption.
+La @fig-estudio-eventos presenta las estimaciones de estudio de eventos. Se encuentra que 
+los departamentos que reciben zonas de promoción industrial experimentan un aumento 
+estadísticamente significativo en las tasas de crecimiento poblacional aproximadamente 
+[X] años después de la adopción de la política. La ausencia de tendencias previas 
+significativas es consistente con el supuesto de tendencias paralelas.
 
 ```{r}
-#| label: fig-event-study
-#| fig-cap: "Event Study: Effect of Industrial Policy on Log Population (Placeholder)"
+#| label: fig-estudio-eventos
+#| fig-cap: "Estudio de eventos: efecto de la política industrial sobre el log de la población (marcador de posición)"
 #| fig-height: 4
 
 tibble(
-    event_time = -4:6,
-    att        = c(0, 0, 0, 0, 0, 0.05, 0.09, 0.12, 0.11, 0.13, 0.14),
-    ci_lo      = att - 0.04,
-    ci_hi      = att + 0.04
+  tiempo_evento = -4:6,
+  att   = c(0, 0, 0, 0, 0, 0.05, 0.09, 0.12, 0.11, 0.13, 0.14),
+  ci_lo = att - 0.04,
+  ci_hi = att + 0.04
 ) |>
-    ggplot(aes(event_time, att)) +
-    geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), fill = "steelblue", alpha = 0.2) +
-    geom_line(color = "steelblue") +
-    geom_point(color = "steelblue") +
-    geom_hline(yintercept = 0, linetype = "dashed") +
-    geom_vline(xintercept = -0.5, linetype = "dotted", color = "red") +
-    labs(
-        x = "Years relative to treatment", y = "ATT (log population)",
-        caption = "PLACEHOLDER — replace with real estimates from tar_make()"
-    ) +
-    theme_minimal(base_size = 11)
+  ggplot(aes(tiempo_evento, att)) +
+  geom_ribbon(aes(ymin = ci_lo, ymax = ci_hi), fill = "steelblue", alpha = 0.2) +
+  geom_line(color = "steelblue") +
+  geom_point(color = "steelblue") +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  geom_vline(xintercept = -0.5, linetype = "dotted", color = "red") +
+  labs(
+    x = "Años relativos al tratamiento",
+    y = "ATT (log de la población)",
+    caption = "MARCADOR DE POSICIÓN -- reemplazar con estimaciones reales de tar_make()"
+  ) +
+  theme_minimal(base_size = 11)
 ```
 
 ```{r}
-#| label: tbl-did-main
-#| tbl-cap: "Main DiD Estimates: Effect on Log Population (Placeholder)"
+#| label: tbl-did-principal
+#| tbl-cap: "Estimaciones DiD principales: efecto sobre el log de la población (marcador de posición)"
 
 tibble(
-    Specification = c(
-        "Callaway-Sant'Anna (Overall ATT)",
-        "TWFE (benchmark)",
-        "Callaway-Sant'Anna (Dynamic, post-treatment avg)"
-    ),
-    Estimate = c(NA_real_, NA_real_, NA_real_),
-    SE = c(NA_real_, NA_real_, NA_real_),
-    p_value = c(NA_real_, NA_real_, NA_real_)
+  Especificacion = c(
+    "Callaway-Sant'Anna (ATT global)",
+    "TWFE (referencia)",
+    "Callaway-Sant'Anna (dinamico, promedio post-tratamiento)"
+  ),
+  Estimacion = c(NA_real_, NA_real_, NA_real_),
+  EE         = c(NA_real_, NA_real_, NA_real_),
+  p_valor    = c(NA_real_, NA_real_, NA_real_)
 ) |>
-    gt() |>
-    fmt_missing(everything(), missing_text = "[TBD]") |>
-    tab_header(title = "[PLACEHOLDER — run tar_make() to populate]")
+  gt() |>
+  fmt_missing(everything(), missing_text = "[A DETERMINAR]") |>
+  tab_header(title = "[MARCADOR DE POSICION -- ejecutar tar_make() para poblar]")
 ```
 
-## Spatial Spillovers {#sec-spatial}
+## Derrames espaciales {#sec-espacial}
 
-We test for spatial autocorrelation in post-treatment population growth using Moran's I.
-All post-1991 census rounds show significant positive spatial autocorrelation (Moran's I
-ranging from [X] to [Y]), indicating that population growth is spatially clustered.
+Se examina la autocorrelación espacial en el crecimiento poblacional post-tratamiento 
+mediante la I de Moran. Todas las rondas censales posteriores a 1991 muestran 
+autocorrelación espacial positiva significativa (I de Moran entre [X] e [Y]), lo que 
+indica que el crecimiento poblacional está espacialmente agrupado.
 
-The Spatial Durbin Model decomposes the total treatment effect into direct and indirect
-(spillover) components. Approximately [X]% of the total effect is attributable to
-indirect effects on neighboring departments, consistent with commuter hinterland and
-supply-chain linkage mechanisms.
+El Modelo Durbin Espacial descompone el efecto total del tratamiento en componentes 
+directos e indirectos (derrames). Aproximadamente el [X]% del efecto total se atribuye 
+a efectos indirectos sobre departamentos vecinos, consistente con mecanismos de 
+hinterland de conmutación y encadenamiento productivo.
 
-## Robustness Checks
+## Pruebas de robustez
 
-We conduct the following robustness checks (full results in the online appendix):
+Se realizan las siguientes pruebas de robustez (resultados completos en el apéndice en 
+línea):
 
-1. **Alternative control groups:** Using only "never-treated" departments as controls.
-2. **Alternative outcome:** Annual growth rate (vs. log population level).
-3. **Anticipation effects:** Allowing 1–2 census periods of anticipation.
-4. **Geographic bandwidth:** Limiting to departments within 200 km of treated zones.
-5. **Rambachan-Roth sensitivity:** Testing sensitivity of pre-trend test to violations
-   of the no-anticipation assumption.
+1. **Grupos de control alternativos:** Usando solo departamentos «nunca tratados» como 
+   control.
+2. **Variable de resultado alternativa:** Tasa de crecimiento anual (vs. nivel de log 
+   de la población).
+3. **Efectos de anticipación:** Permitiendo 1 a 2 períodos censales de anticipación.
+4. **Ancho de banda geográfico:** Limitando a departamentos dentro de los 200 km de 
+   zonas tratadas.
+5. **Sensibilidad Rambachan-Roth:** Evaluando la sensibilidad de la prueba de 
+   pre-tendencias a violaciones del supuesto de no anticipación.
 
-# Conclusion {#sec-conclusion}
+# Conclusiones {#sec-conclusion}
 
-This paper provides the first causally credible estimates of the demographic consequences
-of Argentina's industrial promotion zone system. Our results demonstrate that:
+Este trabajo ofrece las primeras estimaciones causalmente creíbles de las consecuencias 
+demográficas del sistema de zonas de promoción industrial argentino. Los resultados 
+demuestran que:
 
-1. Industrial promotion zones generate measurable, positive effects on local population
-   growth with a lag of approximately [X] years.
-2. Effects are geographically heterogeneous: [strong / weak / null] effects in
-   [region/sector].
-3. Significant positive spillovers extend [X] km beyond zone boundaries.
-4. Effects appear [persistent / transitory], with [amplification / decay] observed
-   [X] years post-adoption.
+1. Las zonas de promoción industrial generan efectos positivos y medibles sobre el 
+   crecimiento poblacional local con un rezago de aproximadamente [X] años.
+2. Los efectos son geográficamente heterogéneos: efectos [fuertes / débiles / nulos] 
+   en [región/sector].
+3. Derrames positivos significativos se extienden hasta [X] km más allá de los límites 
+   de las zonas.
+4. Los efectos parecen [persistentes / transitorios], con [amplificación / decaimiento] 
+   observado [X] años post-adopción.
 
-## Policy Implications
+## Implicaciones de política
 
-Our findings suggest that place-based industrial policy can effectively alter
-population distribution at the subnational level. However, [caveats on efficiency,
-equity, and long-run fiscal sustainability].
+Los hallazgos sugieren que la política industrial de lugar puede alterar eficazmente 
+la distribución poblacional a nivel subnacional. Sin embargo, [advertencias sobre 
+eficiencia, equidad y sostenibilidad fiscal de largo plazo].
 
-## Limitations and Future Research
+## Limitaciones y agenda futura
 
-This analysis is limited by: (a) the absence of continuous annual population
-series between censuses; (b) limited data on within-zone firm dynamics and employment;
-(c) the inability to separately identify migration and natural increase channels (see
-Paper 2 of this series).
+Este análisis está limitado por: (a) la ausencia de series de población anual continuas 
+entre censos; (b) datos limitados sobre dinámica de empresas y empleo dentro de las 
+zonas; (c) la imposibilidad de identificar por separado los canales de migración y 
+crecimiento natural (véase Paper 2 de esta serie).
 
-Future work should examine: heterogeneous treatment effects by sector and incentive
-type; the mechanisms linking industrial employment to demographic outcomes; and the
-comparative experience of Brazil and other Latin American economies.
+La investigación futura debería examinar: efectos heterogéneos del tratamiento por sector 
+y tipo de incentivo; los mecanismos que vinculan el empleo industrial con los resultados 
+demográficos; y la experiencia comparada de Brasil y otras economías latinoamericanas.
 
-# References {.unnumbered}
+# Referencias {.unnumbered}
 
 ::: {#refs}
 :::
 
-# Appendix {#sec-appendix .unnumbered}
+# Apéndice {#sec-apendice .unnumbered}
 
-## A. Census Harmonization Procedure {#sec-appendix-harmonization}
+## A. Procedimiento de armonización censal {#sec-apendice-armonizacion}
 
-Details of the crosswalk construction, geographic harmonization, and imputation
-procedures are documented in `data/documentation/codebook.md` and the
-`R/01_harmonization.R` script.
+Los detalles de la construcción del cuadro de equivalencias, la armonización geográfica 
+y los procedimientos de imputación están documentados en `data/documentation/codebook.md` 
+y en el script `R/01_harmonization.R`.
 
-## B. Industrial Zone Dataset Construction
+## B. Construcción del conjunto de datos de zonas industriales
 
-## C. Additional Robustness Results
+## C. Resultados adicionales de robustez
 
-## D. Spatial Diagnostics
+## D. Diagnósticos espaciales

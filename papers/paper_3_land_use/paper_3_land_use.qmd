@@ -1,34 +1,43 @@
 ---
-title: "Industrial Zones and Land-Use Transitions: Forest Footprints of Place-Based Policy in Argentina"
+title: "Zonas industriales y transiciones en el uso del suelo: la huella ambiental de la política industrial de lugar en Argentina"
 author:
-  - name: "Author Name"
-    affiliation: "Institution"
+  - name: "Nicolás Sacco"
+    affiliation: "Institución"
     corresponding: true
 date: last-modified
+lang: es
 abstract: |
-  We examine whether industrial promotion zones in Argentina generate measurable
-  land-use and forest cover transitions in their vicinities. Combining satellite-derived
-  forest cover data (Hansen Global Forest Watch) with our georeferenced industrial zone
-  dataset, we apply land-use change models, spatial regression, and a forest transition
-  framework to evaluate the environmental footprint of place-based industrial policy.
-  We find that zones associated with agro-industrial and resource extraction sectors
-  generate significant forest cover loss within [X] km of zone boundaries, while
-  manufacturing-focused zones show [null / mixed] forest effects. We adapt methods
-  from Sharygin (2020) to estimate displacement of forest-dependent populations
-  from areas adjacent to expanding industrial zones.
+  Se examina si las zonas de promoción industrial en Argentina generan transiciones 
+  medibles en el uso del suelo y la cobertura forestal en sus proximidades. Combinando 
+  datos de cobertura forestal derivados de imágenes satelitales (Hansen Global Forest 
+  Watch) con el conjunto de datos georreferenciado de zonas industriales, se aplican 
+  modelos de cambio de uso del suelo, regresión espacial y el marco de transición 
+  forestal para evaluar la huella ambiental de la política industrial de base territorial. 
+  Se encuentra que las zonas asociadas a los sectores agroindustrial y de extracción de 
+  recursos generan pérdida significativa de cobertura forestal dentro de [X] km de los 
+  límites de las zonas, mientras que las zonas orientadas a la manufactura presentan 
+  efectos forestales [nulos / mixtos]. Se adaptan los métodos de Sharygin (2020) para 
+  estimar el desplazamiento de poblaciones dependientes del bosque en áreas adyacentes 
+  a zonas industriales en expansión.
 keywords:
-  - land-use change
-  - forest transition
-  - industrial policy
+  - cambio de uso del suelo
+  - transición forestal
+  - política industrial
   - Argentina
-  - satellite data
+  - datos satelitales
   - Hansen GFW
-  - environmental demography
+  - demografía ambiental
 format:
   pdf:
     documentclass: article
     classoption: [12pt, a4paper]
     number-sections: true
+    colorlinks: true
+    linkcolor: "NavyBlue"
+    citecolor: "teal"
+    urlcolor: "NavyBlue"
+    fig-cap-location: bottom
+    tbl-cap-location: top
     include-in-header:
       text: |
         \usepackage{booktabs}
@@ -53,154 +62,174 @@ execute:
 #| label: setup
 #| include: false
 library(tidyverse)
-library(targets)
-library(here)
 library(gt)
-library(sf)
-library(ggplot2)
 
-spatial_panel  <- targets::tar_read(spatial_panel)
-displacement   <- targets::tar_read(displacement_est)
+# --- DATOS DE MARCADOR DE POSICIÓN (reemplazar con targets::tar_read() una vez ejecutado tar_make()) ---
+spatial_panel <- tibble(
+  anno_censal  = rep(c(2000, 2005, 2010, 2015, 2022), 2),
+  tratado      = c(rep(FALSE, 5), rep(TRUE, 5)),
+  treecover_pct = c(38.2, 37.5, 36.8, 36.1, 35.4,
+                    32.0, 30.5, 28.9, 27.1, 25.6)
+)
+
+displacement_stub <- tibble(
+  periodo             = c("1991-2001", "2001-2010", "2010-2022"),
+  est_desplazados     = c(12400L, 18700L, 24300L),
+  n_depts_con_deficit = c(8L, 12L, 17L)
+)
 ```
 
-# Introduction {#sec-intro}
+# Introducción {#sec-intro}
 
-The environmental consequences of industrial promotion policies represent a
-largely overlooked dimension of place-based development evaluation. Industrial zones
-can transform landscapes through multiple pathways: directly through land conversion
-for infrastructure and production; indirectly through population-driven urban expansion;
-and through induced agricultural intensification in supply-chain hinterlands.
+Las consecuencias ambientales de las políticas de promoción industrial representan una 
+dimensión ampliamente ignorada en la evaluación del desarrollo de base territorial. Las 
+zonas industriales pueden transformar los paisajes a través de múltiples vías: 
+directamente, mediante la conversión de suelo para infraestructura y producción; 
+indirectamente, mediante la expansión urbana impulsada por el crecimiento poblacional; 
+y a través de la intensificación agrícola inducida en los hinterlands de la cadena 
+de suministro.
 
-This paper examines the **land-use and forest transition footprint** of Argentina's
-industrial promotion system. We draw theoretically from the Forest Transition framework
-[@mather_1992; @meyfroidt_lambin_2011], which predicts a non-linear relationship
-between economic development and forest cover, and integrate Sleeter et al.'s (2017)
-scenario-based land change methodology adapted to economic policy contexts.
+Este trabajo examina la **huella de uso del suelo y transición forestal** del sistema 
+de promoción industrial argentino. Se toma como referencia teórica el marco de la 
+Transición Forestal [@mather_1992; @meyfroidt_lambin_2011], que predice una relación 
+no lineal entre el desarrollo económico y la cobertura forestal, e integra la metodología 
+de cambio de uso del suelo basada en escenarios de @sleeter_2017, adaptada a contextos 
+de política económica.
 
-A distinctive contribution is our adaptation of @sharygin_2020's displacement
-estimation framework — originally developed for wildfire-affected populations — to
-the context of forest-dependent communities adjacent to expanding industrial zones.
+Una contribución distintiva es la adaptación del marco de estimación de desplazamiento 
+de @sharygin_2020 —originalmente desarrollado para poblaciones afectadas por incendios 
+forestales— al contexto de comunidades dependientes del bosque adyacentes a zonas 
+industriales en expansión.
 
-## Research Questions
+## Preguntas de investigación
 
-1. Do industrial promotion zones trigger measurable land-use transitions in peri-zone areas?
-2. What is the net forest cover change associated with industrial zone designation?
-3. Are there measurable displacement effects on forest-adjacent populations?
+1. ¿Las zonas de promoción industrial desencadenan transiciones medibles en el uso del 
+   suelo en áreas peri-zonales?
+2. ¿Cuál es el cambio neto en cobertura forestal asociado a la designación de zonas 
+   industriales?
+3. ¿Existen efectos de desplazamiento medibles sobre poblaciones adyacentes al bosque?
 
-# Theoretical Framework {#sec-theory}
+# Marco teórico {#sec-teoria}
 
-## Forest Transition Theory
+## Teoría de la transición forestal
 
-The Forest Transition (FT) hypothesis posits that as economies develop, forest cover
-follows a U-shaped trajectory: initial deforestation gives way to reforestation as
-agricultural productivity improvements and off-farm employment reduce pressure on
-forest resources [@mather_1992]. Industrial promotion can accelerate or disrupt this
-transition:
+La hipótesis de la Transición Forestal (TF) postula que a medida que las economías se 
+desarrollan, la cobertura forestal sigue una trayectoria en U: la deforestación inicial 
+da paso a la reforestación cuando las mejoras en la productividad agrícola y el empleo 
+fuera del sector reducen la presión sobre los recursos forestales [@mather_1992]. La 
+promoción industrial puede acelerar o interrumpir esta transición:
 
-- **Acceleration pathway:** Manufacturing employment draws workers from forest-frontier
-  agriculture, reducing deforestation pressure.
-- **Disruption pathway:** Resource-extraction zones increase deforestation through
-  direct land conversion and induced migration.
+- **Vía de aceleración:** El empleo manufacturero atrae trabajadores desde la agricultura 
+  de frontera forestal, reduciendo la presión sobre la deforestación.
+- **Vía de disrupción:** Las zonas de extracción de recursos incrementan la deforestación 
+  mediante la conversión directa de suelo y la migración inducida.
 
-## Land-Use Change Modeling
+## Modelado del cambio de uso del suelo
 
-We adapt the transition probability matrix approach of @sleeter_2017 to classify
-land transitions across six categories:
+Se adapta el enfoque de la matriz de probabilidad de transición de @sleeter_2017 para 
+clasificar las transiciones del suelo en seis categorías:
+
 ```
-(1) Forest → Urban       (deforestation + urbanization)
-(2) Forest → Agriculture (agricultural expansion)
-(3) Agriculture → Urban  (peri-urban expansion)
-(4) Urban → Industrial   (zone-induced conversion)
-(5) Stable Forest        (no transition)
-(6) Other                (grassland, wetland, bare)
+(1) Bosque → Urbano       (deforestación + urbanización)
+(2) Bosque → Agricultura  (expansión agrícola)
+(3) Agricultura → Urbano  (expansión periurbana)
+(4) Urbano → Industrial   (conversión inducida por zonas)
+(5) Bosque estable        (sin transición)
+(6) Otro                  (pastizal, humedal, suelo desnudo)
 ```
 
-# Data {#sec-data}
+# Datos {#sec-datos}
 
-## Forest Cover Data (Module C)
+## Datos de cobertura forestal (Módulo C)
 
-We use Hansen et al. (2013) Global Forest Change data at 30m resolution, available
-2000–2022, to measure:
-- Baseline tree cover (2000)
-- Annual forest loss (2001–2022)
-- Annual forest gain (2000–2022)
+Se utilizan los datos de Cambio Forestal Global de @hansen_2013 a 30 m de resolución, 
+disponibles para 2000–2022, para medir:
 
-## Industrial Zone Data (Module B)
+- Cobertura arbórea de línea de base (2000)
+- Pérdida forestal anual (2001–2022)
+- Ganancia forestal anual (2000–2022)
 
-Described in Paper 1. For this analysis, we additionally code:
-- Sector type (manufacturing, agro-industrial, resource extraction, mixed)
-- Infrastructure footprint (road access, water, electricity)
+## Datos de zonas industriales (Módulo B)
 
-# Identification Strategy {#sec-identification}
+Descritos en el Artículo 1. Para este análisis se codifican adicionalmente:
 
-## Spatial Regression Discontinuity
+- Tipo de sector (manufactura, agroindustria, extracción de recursos, mixto)
+- Huella de infraestructura (acceso vial, agua, electricidad)
 
-Our primary identification strategy exploits the sharp geographic boundary of
-industrial zone designations. Using a **Spatial Regression Discontinuity Design**
-(Spatial RDD), we compare forest cover change rates just inside vs. just outside
-zone boundaries, controlling for geographic characteristics and pre-designation trends.
+# Estrategia de identificación {#sec-identificacion}
 
-## Difference-in-Differences (Land Cover)
+## Regresión discontinua espacial
 
-We complement the spatial RDD with a department-level panel DiD, using departments
-adjacent to — but not containing — industrial zones as a comparison group.
+La estrategia de identificación principal explota el límite geográfico nítido de las 
+designaciones de zonas industriales. Mediante un **Diseño de Regresión Discontinua 
+Espacial** (RDD espacial), se comparan las tasas de cambio de cobertura forestal justo 
+dentro y justo fuera de los límites de las zonas, controlando por características 
+geográficas y tendencias previas a la designación.
 
-# Results {#sec-results}
+## Diferencias en diferencias (cobertura del suelo)
 
-## Forest Cover Transitions
+Se complementa el RDD espacial con un DiD de panel a nivel departamental, usando 
+departamentos adyacentes —pero que no contienen— zonas industriales como grupo de 
+comparación.
+
+# Resultados {#sec-resultados}
+
+## Transiciones en la cobertura forestal
 
 ```{r}
-#| label: fig-forest-trend
-#| fig-cap: "Forest Cover Change Near Industrial Zones (2000–2022)"
+#| label: fig-tendencia-forestal
+#| fig-cap: "Cambio en cobertura forestal cerca de zonas industriales, 2000–2022 (marcador de posición)"
+#| fig-height: 4
 
 spatial_panel |>
-  filter(!is.na(treecover_pct)) |>
-  group_by(census_year, treated) |>
-  summarise(mean_forest = mean(treecover_pct, na.rm = TRUE), .groups = "drop") |>
-  ggplot(aes(x = census_year, y = mean_forest, color = as.factor(treated))) +
+  ggplot(aes(x = anno_censal, y = treecover_pct, color = as.factor(tratado))) +
   geom_line(linewidth = 1) +
-  geom_point() +
+  geom_point(size = 2) +
   scale_color_manual(
     values = c("FALSE" = "#4393c3", "TRUE" = "#d73027"),
-    labels = c("Control Departments", "Industrial Zone Departments")
+    labels = c("Departamentos de control", "Departamentos con zona industrial")
   ) +
-  scale_y_continuous(labels = scales::percent_format(scale = 1)) +
+  scale_y_continuous(labels = function(x) paste0(x, "%")) +
   labs(
-    x = "Census Year", y = "Mean Tree Cover (%)",
-    color = NULL, title = "Forest cover trends by treatment status"
+    x = "Año",
+    y = "Cobertura arbórea media (%)",
+    color = NULL,
+    caption = "MARCADOR DE POSICIÓN — reemplazar con datos reales de tar_make()"
   ) +
-  theme_minimal()
+  theme_minimal(base_size = 11)
 ```
 
-## Displacement Estimation
+## Estimación del desplazamiento
 
-Following @sharygin_2020, we estimate the population displaced from areas adjacent
-to expanding industrial zones by comparing observed population with the synthetic
-counterfactual from our generalized synthetic control model (Paper 1).
+Siguiendo a @sharygin_2020, se estima la población desplazada de las áreas adyacentes 
+a zonas industriales en expansión, comparando la población observada con el contrafáctico 
+sintético del modelo de control sintético generalizado (Artículo 1).
 
 ```{r}
-#| label: tbl-displacement
-#| tbl-cap: "Estimated Policy-Induced Displacement by Period"
+#| label: tbl-desplazamiento
+#| tbl-cap: "Estimación del desplazamiento inducido por la política, por período (marcador de posición)"
 
-displacement$total |>
+displacement_stub |>
   gt() |>
-  fmt_number(columns = where(is.numeric), decimals = 0) |>
+  fmt_number(columns = est_desplazados, decimals = 0) |>
   cols_label(
-    census_year = "Period",
-    est_displaced_total = "Estimated Displaced (N)",
-    n_depts_displaced   = "Departments with Deficit"
-  )
+    periodo             = "Período",
+    est_desplazados     = "Desplazados estimados (N)",
+    n_depts_con_deficit = "Departamentos con déficit"
+  ) |>
+  tab_header(title = "[MARCADOR DE POSICIÓN — ejecutar tar_make() para datos reales]")
 ```
 
-# Conclusion {#sec-conclusion}
+# Conclusiones {#sec-conclusion}
 
-Industrial promotion zones in Argentina generate heterogeneous land-use and forest
-transition effects that vary systematically by sector type: agro-industrial and
-resource zones accelerate forest conversion, while manufacturing zones show smaller
-and sometimes negative forest effects. Displacement of forest-adjacent populations
-is a measurable consequence, concentrated in [regions/periods].
+Las zonas de promoción industrial en Argentina generan efectos heterogéneos en el uso 
+del suelo y la transición forestal que varían sistemáticamente según el tipo de sector: 
+las zonas agroindustriales y de recursos aceleran la conversión forestal, mientras que 
+las zonas manufactureras muestran efectos forestales menores y en algunos casos 
+negativos. El desplazamiento de poblaciones adyacentes al bosque es una consecuencia 
+medible, concentrada en [regiones/períodos].
 
-# References {.unnumbered}
+# Referencias {.unnumbered}
 
 ::: {#refs}
 :::

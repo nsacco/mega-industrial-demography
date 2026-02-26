@@ -1,34 +1,43 @@
 ---
-title: "Migration as the Demographic Engine of Industrial Policy: Evidence from Argentina"
-subtitle: "Gravity Models and Mediation Analysis"
+title: "La migración como motor demográfico de la política industrial: evidencia para Argentina"
+subtitle: "Modelos gravitacionales y análisis de mediación"
 author:
-  - name: "Author Name"
-    affiliation: "Institution"
+  - name: "Nicolás Sacco"
+    affiliation: "Institución"
     corresponding: true
 date: last-modified
+lang: es
 abstract: |
-  We examine migration as the primary mechanism through which industrial promotion
-  zones reshape regional demographic structures in Argentina (1991–2022). Using
-  a PPML gravity framework and origin-destination flow data from five census rounds,
-  we decompose interprovincial migration flows into policy-related and secular
-  components. Formal mediation analysis reveals that migration accounts for
-  approximately [X]% of the total industrial policy effect on local population growth
-  identified in Paper 1. Migration is positively skill-selective into treated areas
-  and negatively selective in sending regions, contributing to regional human capital
-  polarization. These findings highlight migration as both a vehicle and a consequence
-  of place-based industrialization.
+  Se examina la migración como el mecanismo principal mediante el cual las zonas de 
+  promoción industrial reconfiguran las estructuras demográficas regionales en Argentina 
+  (1991–2022). Utilizando un marco gravitacional PPML y datos de flujos entre origen y 
+  destino provenientes de cinco rondas censales, se descomponen los flujos migratorios 
+  interprovinciales en componentes relacionados con la política y componentes seculares. 
+  El análisis formal de mediación revela que la migración explica aproximadamente el 
+  [X]% del efecto total de la política industrial sobre el crecimiento poblacional local 
+  identificado en el Artículo 1. La migración es positivamente selectiva en términos de 
+  calificación hacia las áreas tratadas y negativamente selectiva en las regiones 
+  expulsoras, contribuyendo a la polarización regional del capital humano. Estos hallazgos 
+  destacan a la migración como vehículo y consecuencia simultánea de la industrialización 
+  de base territorial.
 keywords:
-  - migration
-  - gravity model
-  - mediation analysis
-  - industrial policy
+  - migración
+  - modelo gravitacional
+  - análisis de mediación
+  - política industrial
   - Argentina
-  - origin-destination flows
+  - flujos origen-destino
 format:
   pdf:
     documentclass: article
     classoption: [12pt, a4paper]
     number-sections: true
+    colorlinks: true
+    linkcolor: "NavyBlue"
+    citecolor: "teal"
+    urlcolor: "NavyBlue"
+    fig-cap-location: bottom
+    tbl-cap-location: top
     include-in-header:
       text: |
         \usepackage{booktabs}
@@ -53,148 +62,166 @@ execute:
 #| label: setup
 #| include: false
 library(tidyverse)
-library(targets)
-library(here)
 library(gt)
 
-od_period     <- targets::tar_read(od_period)
-skill_decomp  <- targets::tar_read(skill_decomp)
-did_effects   <- targets::tar_read(did_effects)
+# --- DATOS DE MARCADOR DE POSICIÓN (reemplazar con targets::tar_read() una vez ejecutado tar_make()) ---
+od_period <- tibble(
+  anno_censal  = c(1991, 2001, 2010, 2022),
+  flujos_total = c(450000L, 520000L, 610000L, 580000L),
+  n_corredores = c(552L, 552L, 552L, 552L),
+  flujo_media  = c(815.2, 942.0, 1105.1, 1050.7)
+)
+
+skill_decomp <- tibble(
+  anno_censal  = rep(c(1991, 2001, 2010, 2022), 2),
+  tratado      = c(rep(FALSE, 4), rep(TRUE, 4)),
+  pct_educ_alto = c(0.12, 0.15, 0.19, 0.23, 0.18, 0.22, 0.28, 0.34)
+)
 ```
 
-# Introduction {#sec-intro}
+# Introducción {#sec-intro}
 
-Regional population change is proximately the sum of natural increase and net migration.
-In the context of working-age policies like industrial promotion — which primarily affect
-labor market conditions — migration is theoretically the dominant proximate mechanism
-linking economic incentives to population dynamics [@greenwood_1975; @sahota_1968].
-Despite this, migration as a **mediator** of place-based policy effects has received
-surprisingly limited attention in the development economics literature.
+El cambio poblacional regional es proximalmente la suma del crecimiento natural y la 
+migración neta. En el contexto de políticas orientadas a la población en edad de 
+trabajar —como la promoción industrial, que afecta principalmente las condiciones del 
+mercado laboral— la migración es teóricamente el mecanismo próximo dominante que vincula 
+los incentivos económicos con la dinámica poblacional [@greenwood_1975; @sahota_1968]. 
+A pesar de ello, la migración como **mediadora** de los efectos de las políticas de lugar 
+ha recibido una atención sorprendentemente limitada en la literatura de economía del 
+desarrollo.
 
-This paper fills that gap by analyzing **whether, how much, and for whom** migration
-mediates the population growth effects of Argentina's industrial promotion zones.
-We build directly on the causal effect estimates established in Paper 1 of this series.
+Este trabajo llena ese vacío analizando **si, en qué medida y para quiénes** la migración 
+media los efectos sobre el crecimiento poblacional de las zonas de promoción industrial 
+argentinas. El análisis se construye directamente sobre las estimaciones de efectos 
+causales establecidas en el Artículo 1 de esta serie.
 
-## Contribution
+## Contribuciones
 
-1. First gravity-model analysis of Argentine interprovincial migration using harmonized
-   census microdata spanning five decades.
-2. Formal mediation analysis decomposing total industrial policy → population effects
-   into migration-mediated and direct components.
-3. Evidence on skill-selective sorting induced by place-based policy.
+1. Primer análisis de modelo gravitacional de la migración interprovincial argentina 
+   utilizando microdatos censales armonizados a lo largo de cinco décadas.
+2. Análisis formal de mediación que descompone los efectos totales de la política 
+   industrial → población en componentes mediados por la migración y directos.
+3. Evidencia sobre la selección por calificación inducida por las políticas de lugar.
 
-# Migration Theory and Industrial Policy {#sec-theory}
+# Marco teórico: migración y política industrial {#sec-teoria}
 
-## The Migration Mediation Hypothesis
+## La hipótesis de mediación migratoria
 
-The Todaro-Harris model predicts migration from lower-wage rural regions to higher-wage
-urban-industrial regions when expected wage differentials exceed migration costs
-[@harris_todaro_1970]. Industrial promotion, by subsidizing labor demand in
-otherwise unattractive regions, can invert this logic — generating in-migration to
-regions whose natural comparative advantage would not otherwise attract workers.
+El modelo de Todaro-Harris predice la migración desde regiones rurales de menor salario 
+hacia regiones urbano-industriales de mayor salario cuando los diferenciales salariales 
+esperados superan los costos de migración [@harris_todaro_1970]. La promoción industrial, 
+al subsidiar la demanda de trabajo en regiones de otro modo poco atractivas, puede 
+invertir esta lógica: generando inmigración hacia regiones cuya ventaja comparativa 
+natural no atraería trabajadores de forma espontánea.
 
-We formalize this as a **mediation model**:
+Se formaliza esto como un **modelo de mediación**:
 
 $$
-\text{Population}_{it} = \alpha + \delta \cdot \text{Policy}_{it} +
-\beta \cdot \text{NetMig}_{it} + \gamma \cdot X_{it} + \epsilon_{it}
+\text{Población}_{it} = \alpha + \delta \cdot \text{Política}_{it} +
+\beta \cdot \text{MigNeta}_{it} + \gamma \cdot X_{it} + \epsilon_{it}
 $$
 
-where the policy effect $\delta$ is decomposed into:
-- **Indirect effect (ACME):** Policy → Net Migration → Population
-- **Direct effect (ADE):** Policy → Population (independent of migration)
+donde el efecto de la política $\delta$ se descompone en:
 
-# Data {#sec-data}
+- **Efecto indirecto (ACME):** Política → Migración neta → Población
+- **Efecto directo (ADE):** Política → Población (independiente de la migración)
 
-## Origin-Destination Flow Data
+# Datos {#sec-datos}
 
-Migration flows are constructed from census micro-questions on province of residence
-five years prior to the census date (available 1991–2022, Module E).
+## Datos de flujos origen-destino
+
+Los flujos migratorios se construyen a partir de preguntas de microdatos censales sobre 
+la provincia de residencia cinco años antes de la fecha del censo (disponible 1991–2022, 
+Módulo E).
 
 ```{r}
-#| label: tbl-od-summary
-#| tbl-cap: "Summary of Interprovincial Migration Flows by Period"
+#| label: tbl-resumen-od
+#| tbl-cap: "Resumen de flujos migratorios interprovinciales por período (marcador de posición)"
 
 od_period |>
-  group_by(census_year) |>
-  summarise(
-    total_flows   = sum(flow, na.rm = TRUE),
-    n_corridors   = n(),
-    mean_flow     = mean(flow, na.rm = TRUE),
-    .groups = "drop"
-  ) |>
   gt() |>
-  fmt_number(decimals = 0)
+  fmt_number(columns = c(flujos_total, flujo_media), decimals = 0) |>
+  cols_label(
+    anno_censal  = "Año censal",
+    flujos_total = "Flujos totales",
+    n_corredores = "N.° de corredores",
+    flujo_media  = "Flujo medio"
+  ) |>
+  tab_header(title = "[MARCADOR DE POSICIÓN — ejecutar tar_make() para datos reales]")
 ```
 
-# Identification Strategy {#sec-identification}
+# Estrategia de identificación {#sec-identificacion}
 
-## Gravity Model Specification
+## Especificación del modelo gravitacional
 
-We estimate a PPML gravity equation with origin, destination, and time fixed effects:
+Se estima una ecuación gravitacional PPML con efectos fijos de origen, destino y tiempo:
 
 $$
-\text{Flow}_{ijt} = \exp\left(\mu_i + \mu_j + \mu_t + \beta_1 \ln P_{it} +
-\beta_2 \ln P_{jt} + \beta_3 \ln d_{ij} + \beta_4 \text{Policy}_{jt}\right)
+\text{Flujo}_{ijt} = \exp\left(\mu_i + \mu_j + \mu_t + \beta_1 \ln P_{it} +
+\beta_2 \ln P_{jt} + \beta_3 \ln d_{ij} + \beta_4 \text{Política}_{jt}\right)
 \cdot \epsilon_{ijt}
 $$
 
-where $P_{it}$ and $P_{jt}$ are origin and destination populations, $d_{ij}$ is
-great-circle distance, and $\text{Policy}_{jt}$ is the industrial promotion indicator.
+donde $P_{it}$ y $P_{jt}$ son las poblaciones de origen y destino, $d_{ij}$ es la 
+distancia en línea recta y $\text{Política}_{jt}$ es el indicador de promoción industrial.
 
-## Mediation Analysis
+## Análisis de mediación
 
-We follow the potential outcomes framework for mediation [@imai_2010] and estimate
-the Average Causal Mediation Effect (ACME) and Average Direct Effect (ADE) using
-1,000 bootstrapped iterations.
+Se sigue el marco de resultados potenciales para mediación [@imai_2010] y se estima 
+el Efecto Causal Promedio de Mediación (ACME) y el Efecto Directo Promedio (ADE) 
+mediante 1.000 iteraciones bootstrap.
 
-# Results {#sec-results}
+# Resultados {#sec-resultados}
 
-## Gravity Model Estimates
+## Estimaciones del modelo gravitacional
 
-Industrial promotion zones attract [X]% more migrants than comparable non-treated
-destinations, conditional on distance, origin, destination, and time fixed effects.
-The distance elasticity of migration is approximately [X], consistent with the
-regional migration literature.
+Las zonas de promoción industrial atraen un [X]% más de migrantes que los destinos 
+comparables no tratados, condicional a la distancia, origen, destino y efectos fijos 
+temporales. La elasticidad de la migración con respecto a la distancia es 
+aproximadamente [X], consistente con la literatura de migración regional.
 
-## Mediation Results
+## Resultados del análisis de mediación
 
-Migration mediates approximately [X]% of the total industrial policy effect on
-population growth (ACME/Total = [X]). The proportion mediated is larger for:
-(a) more remote zones where transport costs amplify the role of wage differentials;
-(b) more recent periods reflecting improved information diffusion.
+La migración media aproximadamente el [X]% del efecto total de la política industrial 
+sobre el crecimiento poblacional (ACME/Total = [X]). La proporción mediada es mayor para: 
+(a) zonas más remotas donde los costos de transporte amplifican el papel de los 
+diferenciales salariales; (b) períodos más recientes que reflejan una mejor difusión 
+de la información.
 
-## Skill Composition of Policy-Induced Migration
+## Composición por calificación de la migración inducida por la política
 
 ```{r}
-#| label: fig-skill-decomp
-#| fig-cap: "Educational Composition of Migrants to Treated vs. Control Destinations"
+#| label: fig-descomposicion-calificacion
+#| fig-cap: "Composición educativa de los migrantes hacia destinos tratados vs. de control (marcador de posición)"
+#| fig-height: 4
 
 skill_decomp |>
-  filter(migrant_5yr == TRUE) |>
-  ggplot(aes(x = as.factor(census_year), y = pct_educ_high,
-             fill = as.factor(treated))) +
+  ggplot(aes(x = as.factor(anno_censal), y = pct_educ_alto,
+             fill = as.factor(tratado))) +
   geom_col(position = "dodge") +
   scale_fill_manual(
     values = c("FALSE" = "#4393c3", "TRUE" = "#d73027"),
-    labels = c("Control", "Treated")
+    labels = c("Control", "Tratado")
   ) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(
-    x = "Census Year", y = "Share with Tertiary Education",
-    fill = "Industrial Zone", title = "Skill composition of in-migrants"
+    x = "Año censal",
+    y = "Proporción con educación terciaria",
+    fill = "Zona industrial",
+    caption = "MARCADOR DE POSICIÓN — reemplazar con datos reales de tar_make()"
   ) +
-  theme_minimal()
+  theme_minimal(base_size = 11)
 ```
 
-# Conclusion {#sec-conclusion}
+# Conclusiones {#sec-conclusion}
 
-Migration is the primary demographic mechanism through which Argentina's industrial
-promotion zones reshape regional population structures. Our results corroborate and
-extend the population growth effects documented in Paper 1, with important
-implications for the spatial evolution of human capital and regional inequality.
+La migración es el mecanismo demográfico primario mediante el cual las zonas de 
+promoción industrial argentinas reconfiguran las estructuras poblacionales regionales. 
+Los resultados corroboran y amplían los efectos sobre el crecimiento poblacional 
+documentados en el Artículo 1, con implicaciones importantes para la evolución espacial 
+del capital humano y la desigualdad regional.
 
-# References {.unnumbered}
+# Referencias {.unnumbered}
 
 ::: {#refs}
 :::
