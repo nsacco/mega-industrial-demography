@@ -1,0 +1,65 @@
+# R / renv
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+renv/library/
+renv/python/
+renv/staging/
+!renv/activate.R
+!renv/.gitignore
+
+# Targets pipeline cache
+_targets/
+!_targets/meta/
+
+# Quarto
+/.quarto/
+*_files/
+*_cache/
+*.html
+!*.html  # remove this line if you want to ignore all HTML
+.DS_Store
+
+# Outputs (tracked separately or via Git LFS)
+outputs/figures/*.pdf
+outputs/figures/*.png
+outputs/figures/*.svg
+outputs/tables/*.tex
+outputs/tables/*.xlsx
+outputs/maps/*.pdf
+outputs/maps/*.png
+
+# Data (raw data should never be in git — use DVC or direct download)
+data/raw/**
+!data/raw/.gitkeep
+data/processed/**
+!data/processed/.gitkeep
+data/external/**
+!data/external/.gitkeep
+
+# Large files (use Git LFS for these)
+*.csv
+*.xlsx
+*.rds
+*.RDS
+*.dta
+*.sav
+*.shp
+*.gpkg
+*.tif
+*.tiff
+*.nc
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+
+# Secrets
+.env
+*.pem
+*.key

@@ -1,0 +1,56 @@
+cff-version: 1.2.0
+message: "If you use this repository, please cite it as below."
+type: software
+title: "mega-industrial-demography: Industrial Promotion Policies and Population Change"
+abstract: >
+  A fully reproducible, internationally scalable research framework that integrates
+  census, administrative, environmental, and economic data to evaluate how industrial
+  policies reshape population dynamics in Argentina and Brazil.
+authors:
+  - family-names: "Research Team"
+    given-names: "mega-industrial-demography"
+repository-code: "https://github.com/<your-org>/mega-industrial-demography"
+license: MIT
+version: "0.1.0"
+date-released: "2024-01-01"
+keywords:
+  - industrial policy
+  - demography
+  - population change
+  - migration
+  - land-use change
+  - Argentina
+  - Brazil
+  - Latin America
+  - causal inference
+  - spatial econometrics
+  - difference-in-differences
+  - synthetic control
+  - Bayesian statistics
+  - reproducible research
+references:
+  - type: article
+    title: "Difference-in-Differences with Multiple Time Periods"
+    authors:
+      - family-names: Callaway
+        given-names: Brantly
+      - family-names: Sant'Anna
+        given-names: "Pedro H. C."
+    journal: "Journal of Econometrics"
+    year: 2021
+    volume: 225
+    pages: "200-230"
+    doi: "10.1016/j.jeconom.2020.12.001"
+  - type: article
+    title: "Land-use change and population dynamics"
+    authors:
+      - family-names: Sleeter
+        given-names: "Benjamin M."
+    journal: "Applied Geography"
+    year: 2017
+  - type: article
+    title: "Estimating population displacement after wildfires"
+    authors:
+      - family-names: Sharygin
+        given-names: "Ethan J."
+    year: 2020

@@ -1,0 +1,213 @@
+---
+title: "Industrial Policy and Demographic Restructuring: A Conceptual Synthesis"
+subtitle: "From Place-Based Incentives to Regional Divergence"
+author:
+  - name: "Author Name"
+    affiliation: "Institution"
+    corresponding: true
+date: last-modified
+abstract: |
+  This chapter synthesizes the empirical findings from a three-paper series on the
+  demographic effects of industrial promotion policies in Argentina (1970–2022) into
+  a unified conceptual framework. We propose a structural model linking industrial
+  policy → economic restructuring → migration → land-use change → demographic
+  restructuring → long-run regional divergence. Drawing on evidence from Argentina
+  and comparative contexts across Latin America, we argue that place-based industrial
+  policies generate deep and persistent demographic restructuring effects that extend
+  far beyond their intended economic targets. The chapter contributes a theoretical
+  synthesis bridging regional economics, spatial demography, and environmental
+  social science, with implications for policy design in the Global South.
+keywords:
+  - industrial policy
+  - demographic restructuring
+  - regional divergence
+  - conceptual synthesis
+  - Latin America
+format:
+  pdf:
+    documentclass: article
+    classoption: [12pt, a4paper]
+    number-sections: true
+  html:
+    toc: true
+    number-sections: true
+    theme: cosmo
+bibliography: references.bib
+csl: apa.csl
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(ggplot2)
+library(patchwork)
+library(here)
+```
+
+# Introduction {#sec-intro}
+
+Place-based industrial policy occupies a distinctive position in the toolkit of
+development strategy: unlike broad-based macroeconomic interventions, it promises
+to reshape not only economic outcomes but also the geographic distribution of people
+and livelihoods. This chapter argues that understanding this distributional dimension
+requires a conceptual framework that explicitly integrates demographic, economic,
+and environmental processes.
+
+The chapter is organized around a **Unified Structural Model** synthesizing three
+interconnected research questions: (1) How do industrial zones affect overall population
+growth? (2) What role does migration play in transmitting these effects? (3) What are
+the land-use and environmental consequences of policy-induced demographic change?
+
+# Theoretical Architecture {#sec-theory}
+
+## The Unified Structural Model
+
+We propose a causal chain connecting industrial policy to long-run regional demographic
+divergence:
+
+```{r}
+#| label: fig-dag
+#| fig-cap: "Directed Acyclic Graph: Industrial Policy → Demographic Restructuring"
+
+# Conceptual DAG visualization
+nodes <- tibble(
+  label = c("Industrial\nPolicy", "Economic\nRestructuring",
+            "Migration\n(In/Out)", "Land-Use\nChange",
+            "Demographic\nRestructuring", "Long-Run\nDivergence"),
+  x = c(1, 2, 3, 3, 4, 5),
+  y = c(3, 3, 4, 2, 3, 3)
+)
+
+edges <- tibble(
+  from = c(1, 2, 2, 3, 4, 3, 4, 5),
+  to   = c(2, 3, 4, 5, 5, 6, 6, 6)
+) |>
+  left_join(nodes |> select(from_x = x, from_y = y) |> mutate(from = row_number()), by = "from") |>
+  left_join(nodes |> select(to_x = x, to_y = y) |> mutate(to = row_number()), by = "to")
+
+ggplot() +
+  geom_segment(data = edges,
+               aes(x = from_x, y = from_y, xend = to_x, yend = to_y),
+               arrow = arrow(length = unit(0.25, "cm"), type = "closed"),
+               color = "#2166ac", linewidth = 0.7) +
+  geom_label(data = nodes, aes(x = x, y = y, label = label),
+             fill = "#dbeafe", color = "#1e3a5f", fontface = "bold",
+             size = 3.2, label.r = unit(0.4, "lines")) +
+  xlim(0.5, 5.5) + ylim(1, 5) +
+  theme_void() +
+  labs(title = "Structural Pathway: Industrial Policy → Regional Divergence")
+```
+
+## Component Submodels
+
+### Economic Restructuring
+
+Industrial promotion reshapes the local production structure through the following
+mechanisms: (a) **Firm entry:** Subsidied factor costs attract new manufacturing
+establishments; (b) **Sector composition:** Promoted sectors grow relative to
+agriculture and informal services; (c) **Wage effects:** Formal sector wages increase,
+generating real wage differentials that drive migration.
+
+### Migration System
+
+Migration operates as the primary demographic transmission mechanism, with three
+empirically distinguishable sub-processes:
+- **In-migration of workers:** Attracted by wage differentials (documented in Paper 2)
+- **Out-migration from sending regions:** Brain drain and household fragmentation
+- **Return migration:** As zones mature and agglomeration economies emerge
+
+### Land-Use Transitions
+
+Industrial growth generates land-use transitions through: (a) direct conversion of
+agricultural/forest land for zone infrastructure; (b) urban expansion driven by
+in-migration; (c) agricultural intensification in supply hinterlands (documented
+in Paper 3).
+
+### Long-Run Regional Divergence
+
+Agglomeration forces generate path-dependent divergence: early growth attracts further
+growth, while sending regions face persistent out-migration traps. The key theoretical
+prediction is that industrial policy interventions generate **permanently asymmetric**
+regional trajectories rather than temporary redistributive effects.
+
+# Empirical Synthesis {#sec-synthesis}
+
+## Main Findings Across Three Papers
+
+```{r}
+#| label: tbl-synthesis
+#| tbl-cap: "Synthesis of Empirical Findings Across Three Papers"
+
+tibble::tribble(
+  ~Paper, ~Question, ~Method, ~Key_Finding,
+  "Paper 1", "Population growth effects", "Staggered DiD + Spatial",
+    "Industrial zones → +[X]pp annual growth; positive spillovers to [X]km",
+  "Paper 2", "Migration mediation", "PPML Gravity + Mediation",
+    "[X]% of growth effect mediated by in-migration; skill-selective sorting documented",
+  "Paper 3", "Land-use & forest transitions", "Spatial RDD + Hansen GFW",
+    "Agro-industrial zones → significant forest loss; manufacturing zones → mixed effects"
+) |>
+  knitr::kable(
+    col.names = c("Paper", "Research Question", "Primary Method", "Key Finding"),
+    booktabs  = TRUE,
+    longtable = FALSE
+  )
+```
+
+## Comparative Latin American Perspective
+
+Argentina's experience provides a template for analyzing place-based industrial policy
+across the Latin American region, where similar policy instruments have been deployed
+in Brazil (SUDENE, Zona Franca de Manaus), Chile (Zonas Francas), Colombia (Zonas
+Francas), and Mexico (Maquiladoras and Special Economic Zones). The structural model
+proposed here is directly applicable to these contexts, with national-specific
+calibration of parameters reflecting local institutional and demographic conditions.
+
+# Policy Implications {#sec-policy}
+
+## Design Principles for Demographically-Sensitive Industrial Policy
+
+Our synthesis generates the following policy design recommendations:
+
+1. **Monitor demographic outcomes alongside economic outcomes.** Population dynamics
+   are the ultimate test of whether place-based policy changes the geography of
+   economic activity — not just the geography of firms.
+
+2. **Account for sending-region effects.** Policies that successfully attract
+   in-migration to promoted zones may simultaneously trigger depopulation and
+   demographic decline in origin regions.
+
+3. **Differentiate by sector.** Agro-industrial and resource-extraction promotion
+   carry environmental costs (forest loss, displacement) not present in manufacturing
+   promotion.
+
+4. **Design for path-dependence.** Short-term incentives can trigger trajectories of
+   agglomeration that persist long after the incentives expire. Policy sunset clauses
+   should account for this dynamic.
+
+# Conclusion {#sec-conclusion}
+
+Industrial promotion policies are, at their core, demographic policies. By reshaping
+the geography of economic opportunity, they inevitably reshape the geography of people.
+This chapter has proposed and documented a unified framework linking the economic,
+demographic, and environmental consequences of place-based industrial policy in Argentina
+and, potentially, across the Global South.
+
+The three papers comprising this research program have established:
+- Causal population growth effects of industrial zone designation
+- Migration as the primary demographic transmission mechanism
+- Land-use and forest transition costs of industrialization
+
+Together, these findings call for a new generation of "demographically-aware" industrial
+policies that account for the full population consequences of place-based development
+interventions.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::

@@ -1,0 +1,200 @@
+---
+title: "Migration as the Demographic Engine of Industrial Policy: Evidence from Argentina"
+subtitle: "Gravity Models and Mediation Analysis"
+author:
+  - name: "Author Name"
+    affiliation: "Institution"
+    corresponding: true
+date: last-modified
+abstract: |
+  We examine migration as the primary mechanism through which industrial promotion
+  zones reshape regional demographic structures in Argentina (1991–2022). Using
+  a PPML gravity framework and origin-destination flow data from five census rounds,
+  we decompose interprovincial migration flows into policy-related and secular
+  components. Formal mediation analysis reveals that migration accounts for
+  approximately [X]% of the total industrial policy effect on local population growth
+  identified in Paper 1. Migration is positively skill-selective into treated areas
+  and negatively selective in sending regions, contributing to regional human capital
+  polarization. These findings highlight migration as both a vehicle and a consequence
+  of place-based industrialization.
+keywords:
+  - migration
+  - gravity model
+  - mediation analysis
+  - industrial policy
+  - Argentina
+  - origin-destination flows
+format:
+  pdf:
+    documentclass: article
+    classoption: [12pt, a4paper]
+    number-sections: true
+    include-in-header:
+      text: |
+        \usepackage{booktabs}
+        \usepackage{amsmath}
+        \usepackage{float}
+        \usepackage{setspace}
+        \doublespacing
+  html:
+    toc: true
+    number-sections: true
+    theme: cosmo
+bibliography: references.bib
+csl: apa.csl
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(targets)
+library(here)
+library(gt)
+
+od_period     <- targets::tar_read(od_period)
+skill_decomp  <- targets::tar_read(skill_decomp)
+did_effects   <- targets::tar_read(did_effects)
+```
+
+# Introduction {#sec-intro}
+
+Regional population change is proximately the sum of natural increase and net migration.
+In the context of working-age policies like industrial promotion — which primarily affect
+labor market conditions — migration is theoretically the dominant proximate mechanism
+linking economic incentives to population dynamics [@greenwood_1975; @sahota_1968].
+Despite this, migration as a **mediator** of place-based policy effects has received
+surprisingly limited attention in the development economics literature.
+
+This paper fills that gap by analyzing **whether, how much, and for whom** migration
+mediates the population growth effects of Argentina's industrial promotion zones.
+We build directly on the causal effect estimates established in Paper 1 of this series.
+
+## Contribution
+
+1. First gravity-model analysis of Argentine interprovincial migration using harmonized
+   census microdata spanning five decades.
+2. Formal mediation analysis decomposing total industrial policy → population effects
+   into migration-mediated and direct components.
+3. Evidence on skill-selective sorting induced by place-based policy.
+
+# Migration Theory and Industrial Policy {#sec-theory}
+
+## The Migration Mediation Hypothesis
+
+The Todaro-Harris model predicts migration from lower-wage rural regions to higher-wage
+urban-industrial regions when expected wage differentials exceed migration costs
+[@harris_todaro_1970]. Industrial promotion, by subsidizing labor demand in
+otherwise unattractive regions, can invert this logic — generating in-migration to
+regions whose natural comparative advantage would not otherwise attract workers.
+
+We formalize this as a **mediation model**:
+
+$$
+\text{Population}_{it} = \alpha + \delta \cdot \text{Policy}_{it} +
+\beta \cdot \text{NetMig}_{it} + \gamma \cdot X_{it} + \epsilon_{it}
+$$
+
+where the policy effect $\delta$ is decomposed into:
+- **Indirect effect (ACME):** Policy → Net Migration → Population
+- **Direct effect (ADE):** Policy → Population (independent of migration)
+
+# Data {#sec-data}
+
+## Origin-Destination Flow Data
+
+Migration flows are constructed from census micro-questions on province of residence
+five years prior to the census date (available 1991–2022, Module E).
+
+```{r}
+#| label: tbl-od-summary
+#| tbl-cap: "Summary of Interprovincial Migration Flows by Period"
+
+od_period |>
+  group_by(census_year) |>
+  summarise(
+    total_flows   = sum(flow, na.rm = TRUE),
+    n_corridors   = n(),
+    mean_flow     = mean(flow, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  gt() |>
+  fmt_number(decimals = 0)
+```
+
+# Identification Strategy {#sec-identification}
+
+## Gravity Model Specification
+
+We estimate a PPML gravity equation with origin, destination, and time fixed effects:
+
+$$
+\text{Flow}_{ijt} = \exp\left(\mu_i + \mu_j + \mu_t + \beta_1 \ln P_{it} +
+\beta_2 \ln P_{jt} + \beta_3 \ln d_{ij} + \beta_4 \text{Policy}_{jt}\right)
+\cdot \epsilon_{ijt}
+$$
+
+where $P_{it}$ and $P_{jt}$ are origin and destination populations, $d_{ij}$ is
+great-circle distance, and $\text{Policy}_{jt}$ is the industrial promotion indicator.
+
+## Mediation Analysis
+
+We follow the potential outcomes framework for mediation [@imai_2010] and estimate
+the Average Causal Mediation Effect (ACME) and Average Direct Effect (ADE) using
+1,000 bootstrapped iterations.
+
+# Results {#sec-results}
+
+## Gravity Model Estimates
+
+Industrial promotion zones attract [X]% more migrants than comparable non-treated
+destinations, conditional on distance, origin, destination, and time fixed effects.
+The distance elasticity of migration is approximately [X], consistent with the
+regional migration literature.
+
+## Mediation Results
+
+Migration mediates approximately [X]% of the total industrial policy effect on
+population growth (ACME/Total = [X]). The proportion mediated is larger for:
+(a) more remote zones where transport costs amplify the role of wage differentials;
+(b) more recent periods reflecting improved information diffusion.
+
+## Skill Composition of Policy-Induced Migration
+
+```{r}
+#| label: fig-skill-decomp
+#| fig-cap: "Educational Composition of Migrants to Treated vs. Control Destinations"
+
+skill_decomp |>
+  filter(migrant_5yr == TRUE) |>
+  ggplot(aes(x = as.factor(census_year), y = pct_educ_high,
+             fill = as.factor(treated))) +
+  geom_col(position = "dodge") +
+  scale_fill_manual(
+    values = c("FALSE" = "#4393c3", "TRUE" = "#d73027"),
+    labels = c("Control", "Treated")
+  ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  labs(
+    x = "Census Year", y = "Share with Tertiary Education",
+    fill = "Industrial Zone", title = "Skill composition of in-migrants"
+  ) +
+  theme_minimal()
+```
+
+# Conclusion {#sec-conclusion}
+
+Migration is the primary demographic mechanism through which Argentina's industrial
+promotion zones reshape regional population structures. Our results corroborate and
+extend the population growth effects documented in Paper 1, with important
+implications for the spatial evolution of human capital and regional inequality.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::

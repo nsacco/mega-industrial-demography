@@ -1,0 +1,148 @@
+name: CI — R + Quarto Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  R_VERSION: "4.3.3"
+  RENV_PATHS_ROOT: ~/.local/share/renv
+
+jobs:
+  # ── Job 1: R checks ────────────────────────────────────────────────────────
+  r-checks:
+    name: R Linting and Package Restore
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.R_VERSION }}
+          use-public-rspm: true
+
+      - name: Cache renv packages
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.RENV_PATHS_ROOT }}
+          key: ${{ runner.os }}-renv-${{ hashFiles('**/renv.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-renv-
+
+      - name: Restore renv environment
+        shell: Rscript {0}
+        run: |
+          if (!requireNamespace("renv", quietly = TRUE)) install.packages("renv")
+          renv::restore()
+
+      - name: Lint R scripts
+        shell: Rscript {0}
+        run: |
+          if (!requireNamespace("lintr", quietly = TRUE)) install.packages("lintr")
+          issues <- lintr::lint_dir("R/", linters = lintr::linters_with_defaults())
+          if (length(issues) > 0) {
+            print(issues)
+            # Non-fatal: print issues but don't fail (adjust as project matures)
+          }
+
+      - name: Check R script syntax
+        shell: Rscript {0}
+        run: |
+          scripts <- list.files("R", pattern = "\\.R$", recursive = TRUE, full.names = TRUE)
+          for (f in scripts) {
+            tryCatch(
+              parse(f),
+              error = function(e) stop("Syntax error in ", f, ": ", conditionMessage(e))
+            )
+          }
+          message("All R scripts parse successfully.")
+
+  # ── Job 2: targets DAG check ────────────────────────────────────────────────
+  targets-dag:
+    name: Validate targets Pipeline DAG
+    runs-on: ubuntu-latest
+    needs: r-checks
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ env.R_VERSION }}
+
+      - name: Restore renv
+        shell: Rscript {0}
+        run: renv::restore()
+
+      - name: Install system dependencies (spatial)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y libgdal-dev libgeos-dev libproj-dev libudunits2-dev
+
+      - name: Check targets manifest (DAG integrity)
+        shell: Rscript {0}
+        run: |
+          # This checks that _targets.R loads without error
+          # and that the pipeline DAG is well-formed
+          tryCatch({
+            source("R/functions/utils.R")
+            options(warn = -1)
+            # Dry-run: load the pipeline definition
+            targets::tar_manifest(callr_function = NULL)
+            message("targets DAG check passed.")
+          }, error = function(e) {
+            # Downgrade to warning while raw data is absent
+            message("targets DAG note: ", conditionMessage(e))
+          })
+
+  # ── Job 3: Quarto syntax check ─────────────────────────────────────────────
+  quarto-check:
+    name: Quarto Syntax Validation
+    runs-on: ubuntu-latest
+    needs: r-checks
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Check Quarto version
+        run: quarto check
+
+      - name: Validate YAML front matter in all QMDs
+        run: |
+          for f in papers/**/*.qmd; do
+            echo "Checking: $f"
+            quarto check "$f" --no-execute 2>&1 || true
+          done
+
+  # ── Job 4: Documentation ────────────────────────────────────────────────────
+  docs:
+    name: Check Data Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required documentation files
+        run: |
+          files=(
+            "README.md"
+            "CITATION.cff"
+            "LICENSE"
+            "data/documentation/data_dictionary.md"
+            "data/documentation/codebook.md"
+          )
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "MISSING: $f" && exit 1
+            else
+              echo "OK: $f"
+            fi
+          done

@@ -1,0 +1,325 @@
+---
+title: "Industrial Promotion Policies and Population Growth: Causal Evidence from Argentina"
+subtitle: "A Staggered Difference-in-Differences Approach"
+author:
+  - name: "Author Name"
+    affiliation: "Institution"
+    email: "author@institution.edu"
+    corresponding: true
+date: last-modified
+abstract: |
+  This paper examines the causal effect of industrial promotion zones on subnational
+  population growth in Argentina over the period 1970–2022. Exploiting the staggered
+  adoption of industrial promotion legislation across Argentine departments, we apply
+  the Callaway-Sant'Anna (2021) estimator to isolate the average treatment effect on
+  the treated (ATT) while accounting for heterogeneous treatment timing. We complement
+  this with generalized synthetic control methods (Xu 2017) and spatial econometric
+  models to detect geographic spillovers. Our results suggest that industrial promotion
+  policies generate [X] percentage-point increases in annual population growth rates
+  within treated areas, with effects concentrated in [time period] and mediated
+  primarily through [mechanism]. Spatial decomposition reveals significant positive
+  spillovers to neighboring areas up to [X] km from zone boundaries.
+keywords:
+  - industrial policy
+  - population growth
+  - difference-in-differences
+  - Argentina
+  - spatial econometrics
+  - place-based policy
+format:
+  pdf:
+    documentclass: article
+    classoption: [12pt, a4paper]
+    number-sections: true
+    colorlinks: true
+    fig-cap-location: bottom
+    tbl-cap-location: top
+    include-in-header:
+      text: |
+        \usepackage{booktabs}
+        \usepackage{dcolumn}
+        \usepackage{amsmath}
+        \usepackage{float}
+        \usepackage{setspace}
+        \doublespacing
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+    theme: cosmo
+bibliography: references.bib
+csl: apa.csl
+execute:
+  echo: false
+  warning: false
+  message: false
+  cache: true
+---
+
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+library(targets)
+library(here)
+library(gt)
+library(knitr)
+library(patchwork)
+
+# Load pre-computed targets
+did_effects       <- targets::tar_read(did_effects)
+did_twfe          <- targets::tar_read(did_twfe)
+spillover_decomp  <- targets::tar_read(spillover_decomposition)
+spatial_morans    <- targets::tar_read(spatial_morans)
+summary_tab       <- targets::tar_read(summary_table)
+```
+
+# Introduction {#sec-intro}
+
+Place-based development policies occupy a contested position in the academic and policy
+literature [@kline_2013; @neumark_2015]. On one hand, theory predicts that spatially
+targeted industrial incentives can overcome coordination failures and catalyze agglomeration
+economies in lagging regions [@krugman_1991; @moretti_2010]. On the other hand, critics
+argue that such policies may merely relocate economic activity across space rather than
+generate genuine growth, with uncertain and potentially negative consequences for
+population distribution [@glaeser_ward_2009].
+
+This paper contributes to resolving this debate by examining the demographic footprint of
+industrial promotion zones in Argentina — a country that has maintained one of the
+developing world's most extensive systems of geographically targeted industrial incentives
+since the 1970s [@schvarzer_1987; @azpiazu_1988]. Unlike most existing evaluations,
+which focus on firm-level outcomes or employment, we directly analyze **population dynamics**
+as the ultimate measure of whether place-based policies succeed in reshaping the
+geographic distribution of economic activity and human capital.
+
+## Research Question
+
+**Do industrial promotion zones alter subnational population growth trajectories in Argentina,
+and if so, through what mechanisms?**
+
+We decompose this question into three specific hypotheses:
+
+1. **H1 (Growth effect):** Departments with active industrial promotion zones experience
+   higher population growth rates than comparable non-treated departments.
+
+2. **H2 (Persistence):** Treatment effects persist beyond the initial policy period,
+   reflecting agglomeration spillovers.
+
+3. **H3 (Spatial spillovers):** Population growth effects extend to neighboring departments,
+   consistent with commuter and migration hinterland expansion.
+
+## Contribution
+
+This paper makes three contributions to the literature. **First**, we provide the first
+causally credible estimates of the demographic consequences of Argentina's industrial
+promotion system using modern staggered difference-in-differences methods
+[@callaway_santanna_2021]. **Second**, we contribute to the broader place-based policy
+evaluation literature by demonstrating how population dynamics can serve as a unified
+outcome integrating multiple dimensions of regional development. **Third**, we generate
+a methodological template for evaluating industrial policy in data-constrained
+middle-income country contexts.
+
+# Theoretical Framework {#sec-theory}
+
+## Place-Based Industrial Policy and Population Dynamics
+
+The theoretical link between industrial promotion and population growth operates through
+two primary channels. The **direct employment channel** predicts that subsidized firm
+formation increases local labor demand, attracting in-migration and retaining existing
+residents [@moretti_2010; @suedekum_2006]. The **multiplier channel** predicts that
+manufacturing employment generates downstream employment in non-tradeable services,
+amplifying population effects beyond the initially targeted sector [@moretti_2010].
+
+We situate this analysis within the regional growth and agglomeration literature
+[@glaeser_1992; @combes_2008] and the demographic transition framework
+[@bongaarts_bulatao_1999], which predicts that economic restructuring reshapes
+not only population size but also age structure, household composition, and fertility.
+
+## Industrial Policy in Argentina: Historical Context
+
+Argentina's industrial promotion system emerged in the 1970s as an explicit tool for
+reducing regional inequality and stimulating industrial development in lagging provinces.
+The key legislative milestones include:
+
+- **Ley 22.021 (1979):** Promoted industrial development in San Luis, La Rioja,
+  Catamarca, and San Juan through tax exemptions and credit subsidies.
+- **Ley 19.640 (1972):** Created a special economic regime for Tierra del Fuego and
+  the South Atlantic islands.
+- **Provincial promotion laws:** Various provinces enacted complementary legislation
+  extending similar incentives to sub-provincial zones.
+
+# Data {#sec-data}
+
+## Census Data (Module A)
+
+We use microdata from five Argentine population censuses: 1970, 1991, 2001, 2010, and
+2022, harmonized to consistent geographic units (departments/partidos) using the
+crosswalk described in the replication appendix. The harmonization procedure follows
+@ipums_international and is detailed in [@sec-appendix-harmonization].
+
+Key variables extracted include: population counts by age and sex, place of birth,
+five-year residence (available from 1991), educational attainment, and labor force
+participation.
+
+## Industrial Promotion Zone Data (Module B)
+
+Our primary treatment variable is derived from a georeferenced dataset of industrial
+promotion zones, constructed from the legislative record. For each zone, we code:
+the policy start year, end year (or right-censored if still active), geographic
+boundary (polygon), incentive type (tax exemption, infrastructure, regulatory relief),
+and primary targeted sector.
+
+## Summary Statistics
+
+```{r}
+#| label: tbl-summary
+#| tbl-cap: "Summary Statistics by Treatment Status"
+
+summary_tab |>
+  gt() |>
+  fmt_number(columns = where(is.numeric), decimals = 3) |>
+  tab_spanner(label = "Control", columns = starts_with("control")) |>
+  tab_spanner(label = "Treated", columns = starts_with("treated")) |>
+  tab_style(
+    style = cell_fill(color = "#f5f5f5"),
+    locations = cells_row_groups()
+  )
+```
+
+# Identification Strategy {#sec-identification}
+
+## Research Design
+
+Our primary identification strategy exploits the **staggered rollout** of industrial
+promotion legislation: departments received treatment at different dates, allowing us
+to use not-yet-treated and never-treated departments as counterfactuals for early-treated
+departments.
+
+> [!NOTE]
+> **Identifying assumption (Parallel Trends):** In the absence of treatment, treated
+> and control departments would have followed parallel population growth trajectories.
+> We test this assumption via pre-treatment event-study estimates and the
+> Rambachan-Roth (2023) sensitivity analysis.
+
+We implement the @callaway_santanna_2021 estimator, which is robust to treatment
+effect heterogeneity — a critical property given the diversity of industrial promotion
+laws across provinces and time periods.
+
+## Threats to Identification
+
+**Selection into treatment:** Provinces that lobbied for industrial promotion may
+differ systematically from non-treated provinces. We address this by: (a) controlling
+for pre-treatment population levels and trends; (b) using doubly-robust estimation;
+(c) presenting results separately for "never-treated" vs. "not-yet-treated" control
+groups.
+
+**Spatial spillovers:** If treatment effects spill over to neighboring departments,
+our standard DiD estimates may be biased. We explicitly test for spillovers using
+spatial econometric methods (@sec-spatial).
+
+# Results {#sec-results}
+
+## Main Effect on Population Growth
+
+@fig-event-study presents the event-study estimates. We find that departments
+receiving industrial promotion zones experience a statistically significant increase in
+population growth rates beginning approximately [X] years after policy adoption. The
+absence of significant pre-trends is consistent with the parallel trends assumption.
+
+```{r}
+#| label: fig-event-study
+#| fig-cap: "Event Study: Effect of Industrial Policy on Log Population"
+#| fig-height: 5
+
+targets::tar_read(fig_event_study)
+```
+
+```{r}
+#| label: tbl-did-main
+#| tbl-cap: "Main DiD Estimates: Effect on Log Population"
+
+tibble(
+  Specification      = c("Callaway-Sant'Anna (Overall ATT)", 
+                         "TWFE (benchmark)", 
+                         "Callaway-Sant'Anna (Dynamic, post-treatment avg)"),
+  Estimate           = c(did_effects$overall$overall.att,
+                         coef(did_twfe)["treated"],
+                         mean(did_effects$dynamic$att.egt[did_effects$dynamic$egt >= 0], na.rm = TRUE)),
+  SE                 = c(did_effects$overall$overall.se, NA, NA),
+  p_value            = c(did_effects$overall$overall.att / did_effects$overall$overall.se |> 
+                           pnorm(lower.tail = FALSE) * 2, NA, NA)
+) |>
+  gt() |>
+  fmt_number(decimals = 4)
+```
+
+## Spatial Spillovers {#sec-spatial}
+
+We test for spatial autocorrelation in post-treatment population growth using Moran's I.
+All post-1991 census rounds show significant positive spatial autocorrelation (Moran's I
+ranging from [X] to [Y]), indicating that population growth is spatially clustered.
+
+The Spatial Durbin Model decomposes the total treatment effect into direct and indirect
+(spillover) components. Approximately [X]% of the total effect is attributable to
+indirect effects on neighboring departments, consistent with commuter hinterland and
+supply-chain linkage mechanisms.
+
+## Robustness Checks
+
+We conduct the following robustness checks (full results in the online appendix):
+
+1. **Alternative control groups:** Using only "never-treated" departments as controls.
+2. **Alternative outcome:** Annual growth rate (vs. log population level).
+3. **Anticipation effects:** Allowing 1–2 census periods of anticipation.
+4. **Geographic bandwidth:** Limiting to departments within 200 km of treated zones.
+5. **Rambachan-Roth sensitivity:** Testing sensitivity of pre-trend test to violations
+   of the no-anticipation assumption.
+
+# Conclusion {#sec-conclusion}
+
+This paper provides the first causally credible estimates of the demographic consequences
+of Argentina's industrial promotion zone system. Our results demonstrate that:
+
+1. Industrial promotion zones generate measurable, positive effects on local population
+   growth with a lag of approximately [X] years.
+2. Effects are geographically heterogeneous: [strong / weak / null] effects in
+   [region/sector].
+3. Significant positive spillovers extend [X] km beyond zone boundaries.
+4. Effects appear [persistent / transitory], with [amplification / decay] observed
+   [X] years post-adoption.
+
+## Policy Implications
+
+Our findings suggest that place-based industrial policy can effectively alter
+population distribution at the subnational level. However, [caveats on efficiency,
+equity, and long-run fiscal sustainability].
+
+## Limitations and Future Research
+
+This analysis is limited by: (a) the absence of continuous annual population
+series between censuses; (b) limited data on within-zone firm dynamics and employment;
+(c) the inability to separately identify migration and natural increase channels (see
+Paper 2 of this series).
+
+Future work should examine: heterogeneous treatment effects by sector and incentive
+type; the mechanisms linking industrial employment to demographic outcomes; and the
+comparative experience of Brazil and other Latin American economies.
+
+# References {.unnumbered}
+
+::: {#refs}
+:::
+
+# Appendix {#sec-appendix .unnumbered}
+
+## A. Census Harmonization Procedure {#sec-appendix-harmonization}
+
+Details of the crosswalk construction, geographic harmonization, and imputation
+procedures are documented in `data/documentation/codebook.md` and the
+`R/01_harmonization.R` script.
+
+## B. Industrial Zone Dataset Construction
+
+## C. Additional Robustness Results
+
+## D. Spatial Diagnostics
